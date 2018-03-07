@@ -97,13 +97,13 @@ class Key:
         retKey = Key(id=int(attrs[0]), ipaddress=attrs[1], port=int(attrs[2]))
         return retKey  # returns the Key class object for the successor
 
-    def request_closest_preceding_node(self,id):
+    def request_closest_preceding_finger(self,id):
         """
 
         :param id:  the id for whom to find the cloese nor
         :return: Key() return s the key object of node
         """
-        request = "closest_preceding_node," + str(id)
+        request = "closest_preceding_finger," + str(id)
         reply = self.send_request(request)
         if (reply == 'HNE'):
             print("host not exists")

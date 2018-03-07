@@ -19,7 +19,8 @@ class Peer:
         self.ipaddress =None
         self.mac =None
         self.port =None
-        self.successor =Key() # key is the node type Key() # simiular to finger_table[1]
+        self.predecessor = None
+        self.successor =None # key is the node type Key() # similar to finger_table[1]
         self.files =defaultdict(list)# dict
         self.finger_table=dict() # dict I - > Key() types
         self.finger_start = dict()
@@ -51,13 +52,18 @@ class Peer:
         # key has been decided
         for i in range(self.m):
             self.finger_start[i] = (self.key.id + 2**(i))/(2**self.m)
-        self.join(next_node)
+        self.next_node = next_node
+        # self.join(next_node)
 
         # if (next_node is None):
         #     self.create()
         # else:
         #     self.log("Requesting to join")
         #     self.request_join(next_node)
+    def start_Node(self):
+        print("Starting the Node .....")
+        self.join(self.next_node)
+
 
     def start_server(self):
         self.t = threading.Thread(target=self.socket_server, args=(self.socket,))
@@ -122,9 +128,9 @@ class Peer:
             string = str(pred)
             sock.send(string.encode('ascii'))
 
-        elif (rpc[0] == 'closest_preceding_node'):  # @1/3/18
+        elif (rpc[0] == 'closest_preceding_finger'):  # @1/3/18
             id = int(rpc[1])
-            key = self.closest_preceding_node(id)
+            key = self.closest_preceding_finger(id)
             string = str(key)
             sock.send(string.encode('ascii'))
 
@@ -180,7 +186,7 @@ class Peer:
     # probabily lefgacy replaced by request_join
     def joinOld(self,otherPeer): # assuming otherPeer is of Key type at the moment
         print("other Peer requesting to join id {}".format(otherPeer))
-        self.predeseccor = None
+        self.predecessor = None
         self.successor = otherPeer.request_find_successor(self.key.id)
         # self.successor = otherPeer.find_successor(self.key)
         if self.successor is not None:
@@ -194,7 +200,7 @@ class Peer:
         if self.inside(id,self.key.id, self.successor.id):
             return self.successor # returns the whole key
         else:
-            node = self.closest_preceding_node(id) # confusing between this and implemetaion should it be self.key.id or just id
+            node = self.closest_preceding_finger(id) # confusing between this and implemetaion should it be self.key.id or just id
             # node is Key type
             return node.request_find_successor(id) # this function will first connect to node and then call find successor form there
 
@@ -216,7 +222,7 @@ class Peer:
                 key = key.request_closest_preceding_finger(id)
             return key
 
-    def closest_preceding_node  (self, id):
+    def closest_preceding_finger(self, id):
         """
         :param id: the parameter id to find the closest preceding node to
         :return: return Key class type
@@ -287,7 +293,7 @@ class Peer:
             """
             self.init_finger_table(key)
             # fixme update other and enable if requires
-            # self.update_others()
+            self.update_others()
             # TODO Move the keys in (predecessor ,n]
 
         else:
@@ -335,7 +341,7 @@ class Peer:
         self.finger_table[0] = key.request_find_successor(self.finger_start[1])
         self.successor = self.finger_table[0] # todo rember to update successor every time finger_table[1] used
         self.predecessor = self.successor.request_predecessor()
-        self.successor.request_notify()
+        self.successor.request_notify(self.key)
         for i in range(0, self.m - 1):
             # Todo implment the if condition for now simple find_succers
             # if self.include(self.finger_start[i + 1],self.key.id, self.finger_table[i].id, True,False)
