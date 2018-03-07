@@ -117,7 +117,10 @@ class Node:
         server.register_function(self.join)
         server.register_function(self.update_others)
         server.register_function(self.update_finger_table)
-        # server.register_function(self.find_predecessor)
+        server.register_function(self.set_successor)
+        server.register_function(self.notify)
+
+
         server.serve_forever()
 
 
@@ -150,6 +153,16 @@ class Node:
         """
         self.predecessor = list
         return list
+
+    def set_successor(self,list):
+        """
+        Set the successor
+        :param list:
+        :return:
+        """
+        self.successor = list
+        self.finger_table[0] = list
+        return list
     def find_predecessor(self,id):
         """
         Return the predecessor for id
@@ -160,8 +173,10 @@ class Node:
         print("Finding Predecessor for {}".format(id))
         n_dash = [self.id,self.ipaddress, self.port]
         #
-        while (not Node.inside(id, n_dash[0], Node.list_to_rpc(n_dash).get_successor[0],False,True)):
+        while (not Node.inside(id, n_dash[0], Node.list_to_rpc(n_dash).get_successor()[0],False,True)):
+            print("Next")
             n_dash = Node.list_to_rpc(n_dash).closest_preceding_finger(id)
+        print("Exiting Predecessor for {}".format(id))
         return n_dash
 
     def closest_preceding_finger(self,id):
@@ -174,6 +189,8 @@ class Node:
         for i in range(self.m-1, -1,-1): #node.id
             if (Node.inside(self.finger_table[i][0],self.id,id )):
                     return self.finger_table[i]
+        print("Exiting Closest Preceeding Node for {}".format(id))
+
         return [self.id, self.ipaddress, self.port]
 
 
@@ -202,6 +219,8 @@ class Node:
             self.predecessor = [self.id, self.ipaddress, self.port]
             self.successor = [self.id, self.ipaddress,self.port]
             print("Ring init finished")
+        print("Quitting Join")
+
     def init_finger_table(self, n_dash):
         """
         Initilaise the finger table using n_dash
@@ -213,8 +232,10 @@ class Node:
         self.finger_table[0] = Node.list_to_rpc(n_dash).find_successor(self.finger_start[0])
         self.successor = [self.finger_table[0][0], self.finger_table[0][1], self.finger_table[0][2]]
         self.predecessor =  Node.list_to_rpc(self.successor).get_predecessor()
+
         print("Okay")
         Node.list_to_rpc(self.successor).set_predecessor([self.id, self.ipaddress, self.port])
+        Node.list_to_rpc(self.predecessor).set_successor([self.id, self.ipaddress, self.port])
         print("Okay2")
         for i in range(self.m-1):
             # todo the if conditoin mentioned in paper
@@ -227,6 +248,8 @@ class Node:
         for i in range(self.m):
             p = self.find_predecessor(self.id - 2**(i))
             Node.list_to_rpc(p).update_finger_table([self.id,self.ipaddress, self.port], i)
+        print("Finieshed Updating Others")
+
 
     def update_finger_table(self,n_list, i):
         """
@@ -240,11 +263,34 @@ class Node:
             self.finger_table[i] = n_list
             p = self.predecessor
             Node.list_to_rpc(p).update_finger_table(n_list , i)
+        print("Updated Finger Table")
+
 
         # returning bogus just for compilation
         return n_list
 
 
+
+    def stabilize(self):
+        """
+        to satbalise the finger tbale
+        :return:
+        """
+        x = Node.list_to_rpc(self.successor).get_predecessor()
+        if (Node.inside(x[0], self.id,  self.successor[0] , False, False)):
+            self.successor = x
+        Node.list_to_rpc(self.successor).notify([self.id, self.ipaddress, self.port])
+
+    def notify(self, list):
+        """
+        n.notify(n')
+        :param list: contains the n'node
+        :return: Should return None but return a bogus list for checking purposes
+        """
+        if (self.predecessor is None or Node.inside(list[0], self.predecessor[0], self.id)):
+            self.predecessor = list
+
+        return list
     @staticmethod
     def list_to_rpc(list = None):
         """
@@ -296,9 +342,14 @@ class Node:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 3:
         next_node = [int(sys.argv[1]),sys.argv[2], int(sys.argv[3])]
         a = Node(next_node= next_node)
+        a.start_server()
+        a.join(next_node)
+    elif len(sys.argv) > 4:
+        next_node = [int(sys.argv[1]), sys.argv[2], int(sys.argv[3])]
+        a = Node(next_node=next_node,port = int(sys.argv[4]))
         a.start_server()
         a.join(next_node)
     else:
