@@ -35,6 +35,7 @@ from uuid import getnode as get_mac
 import xmlrpclib
 import SimpleXMLRPCServer
 import SocketServer
+import time
 # implement the simple xml rpc server
 
 # nodes being passdec
@@ -172,7 +173,6 @@ class Node:
         # n_dash = self
         print("Finding Predecessor for {}".format(id))
         n_dash = [self.id,self.ipaddress, self.port]
-        #
         while (not Node.inside(id, n_dash[0], Node.list_to_rpc(n_dash).get_successor()[0],False,True)):
             print("Next")
             n_dash = Node.list_to_rpc(n_dash).closest_preceding_finger(id)
@@ -220,6 +220,15 @@ class Node:
             self.successor = [self.id, self.ipaddress,self.port]
             print("Ring init finished")
         print("Quitting Join")
+        # fix_finger_thread =\
+        threading.Thread(target=self.fix_fingers).start()
+        """
+        self.thread = threading.Thread(target = self.rpc_server)
+        print("Starting the XML-RPC Server \nIP address : {}\nPort : {}\nKey : {}".format('127.0.0.1',self.port, self.id))
+
+        self.thread.start()
+        """
+
 
     def init_finger_table(self, n_dash):
         """
@@ -291,6 +300,16 @@ class Node:
             self.predecessor = list
 
         return list
+
+    def fix_fingers(self):
+        while True:
+            i = random.randint(1, self.m-1)
+            self.finger_table[i] = self.find_successor(self.finger_start[i])
+            time.sleep(1)
+
+
+
+
     @staticmethod
     def list_to_rpc(list = None):
         """
