@@ -76,6 +76,8 @@ class Node:
         for i in range(self.m):
             self.finger_start[i] = (self.id + (2**i))%(2**self.m)
 
+
+        #fixme check wether that try expcet for leaving nodes
     @staticmethod
     def get_mbit(string,m=5):
         """
@@ -88,6 +90,12 @@ class Node:
         m_bit = int(hsh,16)%(2**m)
         return int(m_bit)
 
+    def connected(self):
+        """
+        RPC to check if the node is connected or not
+        :return:
+        """
+        return True
     def start_node(self):
         print("Starting Node ...")
 
@@ -120,6 +128,7 @@ class Node:
         server.register_function(self.update_finger_table)
         server.register_function(self.set_successor)
         server.register_function(self.notify)
+        server.register_function(self.connected)
 
 
         server.serve_forever()
@@ -131,11 +140,11 @@ class Node:
         :param id: int() whose finger table is to  be found
         :return: returns list
         """
-        print("Finding Successor for {}".format(id))
+        # print("Finding Successor for {}".format(id))
         n_dash = self.find_predecessor(id) # ndash is the list
 
         # n_dash will be of type xmlrpccleint
-        print("Exiting Successor for {}".format(id))
+        # print("Exiting Successor for {}".format(id))
         return Node.list_to_rpc(n_dash).get_successor()
     def get_successor(self):
         """
@@ -171,12 +180,12 @@ class Node:
         :return: list of id, ip , port
         """
         # n_dash = self
-        print("Finding Predecessor for {}".format(id))
+        # print("Finding Predecessor for {}".format(id))
         n_dash = [self.id,self.ipaddress, self.port]
         while (not Node.inside(id, n_dash[0], Node.list_to_rpc(n_dash).get_successor()[0],False,True)):
             print("Next")
             n_dash = Node.list_to_rpc(n_dash).closest_preceding_finger(id)
-        print("Exiting Predecessor for {}".format(id))
+        # print("Exiting Predecessor for {}".format(id))
         return n_dash
 
     def closest_preceding_finger(self,id):
@@ -185,11 +194,11 @@ class Node:
         :param id: the id whose precerder has to be oud
         :return: list[id,ip,port]
         """
-        print("Finding Closest Preceeding Node for {}".format(id))
+        # print("Finding Closest Preceeding Node for {}".format(id))
         for i in range(self.m-1, -1,-1): #node.id
             if (Node.inside(self.finger_table[i][0],self.id,id )):
                     return self.finger_table[i]
-        print("Exiting Closest Preceeding Node for {}".format(id))
+        # print("Exiting Closest Preceeding Node for {}".format(id))
 
         return [self.id, self.ipaddress, self.port]
 
@@ -303,9 +312,25 @@ class Node:
 
     def fix_fingers(self):
         while True:
+            connected = False
+            try:
+                # to check if the successor is connected or not
+                if self.predecessor is not None :
+                    connected = Node.list_to_rpc(self.predecessor).connected()
+            except:
+                connected = False
+            if not connected:
+                self.predecessor = None
+                # the successor has left
+            self.stabilize()
             i = random.randint(1, self.m-1)
-            self.finger_table[i] = self.find_successor(self.finger_start[i])
-            time.sleep(1)
+            try:
+                self.finger_table[i] = self.find_successor(self.finger_start[i])
+                if i == 0:
+                    self.successor = [self.finger_table[0][0],self.finger_table[0][1] , self.finger_table[0][2]]
+            except:
+                continue
+            time.sleep(2)
 
 
 
@@ -319,7 +344,7 @@ class Node:
         """
 
         client = xmlrpclib.ServerProxy(str("http://" + list[1] + ":" + str(list[2])+"/"))
-        print("http://" + list[1] + ":" + str(list[2])+"/ - is the connecting node" )
+        # print("http://" + list[1] + ":" + str(list[2])+"/ - is the connecting node" )
         return client
     @staticmethod
     def inside(x,a,b,includeLeft = False, includeRight = False):
