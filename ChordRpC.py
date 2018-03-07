@@ -72,7 +72,7 @@ class Node:
         self.finger_table = dict()
         self.finger_start = dict()
         self.next_node = next_node
-
+        self.second_successor = None
         for i in range(self.m):
             self.finger_start[i] = (self.id + (2**i))%(2**self.m)
 
@@ -103,7 +103,11 @@ class Node:
         print("Select from Following:\n1. Print IP address and ID\n2.IP Address of Successor and Predecessor\n"
               "3. The file key is contains\n4.Finger Table : ")
         choice = raw_input()
-        choice = int(choice)
+
+        try:
+            choice = int(choice)
+        except:
+            choice = 5
         # print(choice)
         if choice == 1:
             # print Ip address and ID
@@ -213,7 +217,7 @@ class Node:
                 n_dash = Node.list_to_rpc(n_dash).closest_preceding_finger(id)
             #   print("Exiting Predecessor for {}".format(id))
         except:
-            raise ValueError('Node not present')
+            raise ValueError('find_predecessor Node not present')
         return n_dash
 
     def closest_preceding_finger(self,id):
@@ -278,19 +282,25 @@ class Node:
         try:
             self.finger_table[0] = Node.list_to_rpc(n_dash).find_successor(self.finger_start[0])
         except:
-            raise ValueError('Node not exists')
+            raise ValueError('init_finger_table Node not exists')
         self.successor = [self.finger_table[0][0], self.finger_table[0][1], self.finger_table[0][2]]
         try:
             self.predecessor =  Node.list_to_rpc(self.successor).get_predecessor()
         except:
-            raise ValueError('Node not exists')
+            raise ValueError('init_finger_table Node not exists')
         # print("Okay")
-        Node.list_to_rpc(self.successor).set_predecessor([self.id, self.ipaddress, self.port])
-        Node.list_to_rpc(self.predecessor).set_successor([self.id, self.ipaddress, self.port])
+        try:
+            Node.list_to_rpc(self.successor).set_predecessor([self.id, self.ipaddress, self.port])
+            Node.list_to_rpc(self.predecessor).set_successor([self.id, self.ipaddress, self.port])
+        except:
+            raise ValueError('init finger table Not found')
         # print("Okay2")
         for i in range(self.m-1):
             # todo the if conditoin mentioned in paper
-            self.finger_table[i+1] = Node.list_to_rpc(n_dash).find_successor(self.finger_start[i+1])
+            try:
+                self.finger_table[i+1] = Node.list_to_rpc(n_dash).find_successor(self.finger_start[i+1])
+            except:
+                raise ValueError('init_finger_table Node not exists')
         # print("Finger table initialized")
 
 
@@ -298,7 +308,10 @@ class Node:
         # print("Updating Others")
         for i in range(self.m):
             p = self.find_predecessor(self.id - 2**(i))
-            Node.list_to_rpc(p).update_finger_table([self.id,self.ipaddress, self.port], i)
+            try:
+                Node.list_to_rpc(p).update_finger_table([self.id,self.ipaddress, self.port], i)
+            except:
+                raise ValueError('update others : Node not found')
         # print("Finieshed Updating Others")
 
 
@@ -313,7 +326,10 @@ class Node:
         if (Node.inside(n_list[0],self.id,self.finger_table[i][0], True, False)):
             self.finger_table[i] = n_list
             p = self.predecessor
-            Node.list_to_rpc(p).update_finger_table(n_list , i)
+            try:
+                Node.list_to_rpc(p).update_finger_table(n_list , i)
+            except:
+                raise ValueError('update finger table Node not found')
         # print("Updated Finger Table")
 
 
@@ -327,11 +343,13 @@ class Node:
         to satbalise the finger tbale
         :return:
         """
-        x = Node.list_to_rpc(self.successor).get_predecessor()
-        if (Node.inside(x[0], self.id,  self.successor[0] , False, False)):
-            self.successor = x
-        Node.list_to_rpc(self.successor).notify([self.id, self.ipaddress, self.port])
-
+        try:
+            x = Node.list_to_rpc(self.successor).get_predecessor()
+            if (Node.inside(x[0], self.id,  self.successor[0] , False, False)):
+                self.successor = x
+            Node.list_to_rpc(self.successor).notify([self.id, self.ipaddress, self.port])
+        except:
+            raise ValueError("Stabilize Node not exists")
     def notify(self, list):
         """
         n.notify(n')
@@ -348,22 +366,29 @@ class Node:
             connected = False
             try:
                 # to check if the successor is connected or not
-                if self.predecessor is not None :
-                    connected = Node.list_to_rpc(self.predecessor).connected()
+
+                connected = Node.list_to_rpc(self.successor).connected()
             except:
                 connected = False
-            if not connected:
-                self.predecessor = None
+            if connected:
+                self.second_successor = Node.list_to_rpc(self.successor).get_successor()
+            else:
+                self.successor = self.second_successor
+                self.finger_table[0] = self.successor
+                try:
+                    self.init_finger_table(self.successor)
+                except:
+                    pass
                 # the successor has left
-            self.stabilize()
-            i = random.randint(1, self.m-1)
             try:
+                self.stabilize()
+                i = random.randint(1, self.m-1)
                 self.finger_table[i] = self.find_successor(self.finger_start[i])
                 if i == 0:
-                    self.successor = [self.finger_table[0][0],self.finger_table[0][1] , self.finger_table[0][2]]
+                    self.successor = self.finger_table[0]
             except:
                 continue
-            time.sleep(2)
+            time.sleep(0.5)
 
 
 
@@ -375,7 +400,8 @@ class Node:
         :param list: THe list of id, ip , port
         :return: xmlrpc client
         """
-
+        if list is None:
+            raise ValueError('Node not Found')
         client = xmlrpclib.ServerProxy(str("http://" + list[1] + ":" + str(list[2])+"/"))
         # print("http://" + list[1] + ":" + str(list[2])+"/ - is the connecting node" )
         return client
