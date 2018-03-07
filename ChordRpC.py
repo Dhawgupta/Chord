@@ -99,6 +99,28 @@ class Node:
     def start_node(self):
         print("Starting Node ...")
 
+    def menu_to_print(self):
+        print("Select from Following:\n1. Print IP address and ID\n2.IP Address of Successor and Predecessor\n"
+              "3. The file key is contains\n4.Finger Table : ")
+        choice = raw_input()
+        choice = int(choice)
+        # print(choice)
+        if choice == 1:
+            # print Ip address and ID
+            print("IP Address : {}\nPort : {}\nKey : {}\n".format(self.ipaddress, self.port, self.id))
+        elif choice == 2:
+            # print add of succ and pred
+            print("Successor: Key : {}\nIPaddress : {}\nPort : {}\nPredecessor: Key : {}\nIPaddress : {}\nPort : {}\n".format(self.successor[0],self.successor[1],self.successor[2],
+                                                                                                                              self.predecessor[0], self.predecessor[1], self.predecessor[2]))
+        elif choice == 3:
+            # print key of file it contains
+            pass
+        elif choice == 4:
+            # print finger_table
+            for i in range(self.m):
+                print("ID : {}, Key : {}".format(self.finger_start[i], self.finger_table[i][0]))
+        else:
+            print("Wrong Choice")
 
     def start_server(self):
         """
@@ -115,7 +137,7 @@ class Node:
         THis will run the RPC Server
         """
         # server = SimpleXMLRPCServer.SimpleXMLRPCServer((self.ipaddress,self.port))
-        server = RPCThreading((self.ipaddress, self.port))
+        server = RPCThreading((self.ipaddress, self.port), logRequests=False)
         # TODO register all the appropraite functions
         server.register_function(self.find_successor)
         server.register_function(self.get_successor)
@@ -145,7 +167,10 @@ class Node:
 
         # n_dash will be of type xmlrpccleint
         # print("Exiting Successor for {}".format(id))
-        return Node.list_to_rpc(n_dash).get_successor()
+        try:
+            return Node.list_to_rpc(n_dash).get_successor()
+        except:
+            raise ValueError("Node not present")
     def get_successor(self):
         """
         Get the successor of the node
@@ -182,10 +207,13 @@ class Node:
         # n_dash = self
         # print("Finding Predecessor for {}".format(id))
         n_dash = [self.id,self.ipaddress, self.port]
-        while (not Node.inside(id, n_dash[0], Node.list_to_rpc(n_dash).get_successor()[0],False,True)):
-            print("Next")
-            n_dash = Node.list_to_rpc(n_dash).closest_preceding_finger(id)
-        # print("Exiting Predecessor for {}".format(id))
+        try:
+            while (not Node.inside(id, n_dash[0], Node.list_to_rpc(n_dash).get_successor()[0],False,True)):
+                # print("Next")
+                n_dash = Node.list_to_rpc(n_dash).closest_preceding_finger(id)
+            #   print("Exiting Predecessor for {}".format(id))
+        except:
+            raise ValueError('Node not present')
         return n_dash
 
     def closest_preceding_finger(self,id):
@@ -211,24 +239,24 @@ class Node:
         :param n_dash: n' to which we need to contact is list of [id, ip, port]
         :return: return nothing
         """
-        print("Starting to join...")
+        # print("Starting to join...")
         if n_dash is not None:
-            print("Next Node is specified")
+            # print("Next Node is specified")
             self.init_finger_table(n_dash)
-            print("Finge Table Initialized")
+            # print("Finge Table Initialized")
             #todo see toif using the update others
             self.update_others()
-            print("Other nodes updated")
+            # print("Other nodes updated")
 
         else:
-            print("Next Node not specified")
+            # print("Next Node not specified")
             # ndash is None init the ring
             for i in range(self.m):
                 self.finger_table[i] = [self.id, self.ipaddress, self.port]
             self.predecessor = [self.id, self.ipaddress, self.port]
             self.successor = [self.id, self.ipaddress,self.port]
-            print("Ring init finished")
-        print("Quitting Join")
+            # print("Ring init finished")
+        # print("Quitting Join")
         # fix_finger_thread =\
         threading.Thread(target=self.fix_fingers).start()
         """
@@ -245,28 +273,33 @@ class Node:
         :param n_dash:
         :return:
         """
-        print("Inside init table")
-        print(n_dash)
-        self.finger_table[0] = Node.list_to_rpc(n_dash).find_successor(self.finger_start[0])
+        # print("Inside init table")
+        # print(n_dash)
+        try:
+            self.finger_table[0] = Node.list_to_rpc(n_dash).find_successor(self.finger_start[0])
+        except:
+            raise ValueError('Node not exists')
         self.successor = [self.finger_table[0][0], self.finger_table[0][1], self.finger_table[0][2]]
-        self.predecessor =  Node.list_to_rpc(self.successor).get_predecessor()
-
-        print("Okay")
+        try:
+            self.predecessor =  Node.list_to_rpc(self.successor).get_predecessor()
+        except:
+            raise ValueError('Node not exists')
+        # print("Okay")
         Node.list_to_rpc(self.successor).set_predecessor([self.id, self.ipaddress, self.port])
         Node.list_to_rpc(self.predecessor).set_successor([self.id, self.ipaddress, self.port])
-        print("Okay2")
+        # print("Okay2")
         for i in range(self.m-1):
             # todo the if conditoin mentioned in paper
             self.finger_table[i+1] = Node.list_to_rpc(n_dash).find_successor(self.finger_start[i+1])
-        print("Finger table initialized")
+        # print("Finger table initialized")
 
 
     def update_others(self):
-        print("Updating Others")
+        # print("Updating Others")
         for i in range(self.m):
             p = self.find_predecessor(self.id - 2**(i))
             Node.list_to_rpc(p).update_finger_table([self.id,self.ipaddress, self.port], i)
-        print("Finieshed Updating Others")
+        # print("Finieshed Updating Others")
 
 
     def update_finger_table(self,n_list, i):
@@ -276,12 +309,12 @@ class Node:
         :param i: i th entry in finger table
         :return:
         """
-        print("Updating Finger Table")
+        # print("Updating Finger Table")
         if (Node.inside(n_list[0],self.id,self.finger_table[i][0], True, False)):
             self.finger_table[i] = n_list
             p = self.predecessor
             Node.list_to_rpc(p).update_finger_table(n_list , i)
-        print("Updated Finger Table")
+        # print("Updated Finger Table")
 
 
         # returning bogus just for compilation
@@ -391,12 +424,20 @@ if __name__ == '__main__':
         a = Node(next_node= next_node)
         a.start_server()
         a.join(next_node)
+        a.start_node()
     elif len(sys.argv) > 4:
         next_node = [int(sys.argv[1]), sys.argv[2], int(sys.argv[3])]
         a = Node(next_node=next_node,port = int(sys.argv[4]))
         a.start_server()
         a.join(next_node)
+        a.start_node()
+
     else:
         a  = Node()
         a.start_server()
         a.join()
+        a.start_node()
+
+    while True:
+        a.menu_to_print()
+
