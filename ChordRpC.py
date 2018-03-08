@@ -267,18 +267,28 @@ class Node:
 
         # dictionary of files
         files_to_give = list()
+        files_data = list()
+
         # iterate over dictionayr keys
         tempDict = self.files.copy()
         for key in tempDict:
             if (Node.inside(key, self.predecessor[0], id, False, True)):
                 for file in tempDict[key]:
+                    string =''
                     files_to_give.append(file)
+                    with open('./Files/'+ file ,'r') as f:
+                        a = f.read()
+                        while a:
+                            string = str(a) + string
+
+                    files_data.append(string)
                 # files_to_give[key] = list(tempDict[key])
                 self.lock_files.acquire()
                 del self.files[key]
                 self.lock_files.release()
 
-        return list(files_to_give)
+        files_and_data = [files_to_give, files_data]
+        return list(files_and_data)
 
     def join(self,n_dash = None):
         """
@@ -340,9 +350,11 @@ class Node:
         #     except:
         #         raise ValueError("Successor Absent")
         if first:
-            files = []
-            files = Node.list_to_rpc(self.successor).give_files(self.id)
-            print("Recieved files : {}",files)
+            files_and_data = []
+            files_and_data = Node.list_to_rpc(self.successor).give_files(self.id)
+            print(files_and_data)
+            files = files_and_data[0]
+            data = files_and_data[1]
 
             # convert the file array to the dictionary
         # for file in os.listdir("./Files"):
@@ -352,14 +364,24 @@ class Node:
         #         self.files[key].append(file)
         #         self.lock_files.release()
         # print("Files initiated")
-            for file in files:
+
+            for i,file in enumerate(files):
                 if file.endswith('.txt'):
                     key = Node.get_mbit(file)
                     self.lock_files.acquire()
                     self.files[key].append(file)
                     self.lock_files.release()
 
+                    # add the file to the system
+                    if not os.path.exists("./Files/" + file):
+                        # the file does not exist
+                        print('Creating Files {}'.format(file))
+                        with open('./Files/' + file ,'wb') as f:
+                            f.write(data[i])
+                        # data written to the file
+
             print("Files added to the system: ")
+
             # TODO createa directory to add the files in the directory
             # we have the file
             # self.lock_files.acquire()
