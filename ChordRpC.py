@@ -79,6 +79,13 @@ class Node:
         self.finger_start = dict()
         self.next_node = next_node
         self.second_successor = None
+        self.interfaces = dict()
+        for ifaceName in netifaces.interfaces():
+            addresses = [i['addr'] for i in
+                         netifaces.ifaddresses(ifaceName).setdefault(netifaces.AF_INET, [{'addr': 'No IP addr'}])]
+            self.interfaces[ifaceName] = addresses
+        print (self.interfaces)
+        self.ipaddress = self.interfaces['wlp3s0'][0]
         self.lock_files = threading.Lock()
         for i in range(self.m):
             self.finger_start[i] = (self.id + (2**i))%(2**self.m)

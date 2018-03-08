@@ -85,7 +85,7 @@ class Node:
                          netifaces.ifaddresses(ifaceName).setdefault(netifaces.AF_INET, [{'addr': 'No IP addr'}])]
             self.interfaces[ifaceName] = addresses
         print (self.interfaces)
-        self.ipaddress = self.interfaces['wlp3s0']
+        self.ipaddress = self.interfaces['enp0s3'][0] # enp0s3 is the interface for virtual machine in my system
         self.lock_files = threading.Lock()
         for i in range(self.m):
             self.finger_start[i] = (self.id + (2**i))%(2**self.m)
