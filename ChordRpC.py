@@ -283,6 +283,9 @@ class Node:
                 for file in tempDict[key]:
                     string =''
                     files_to_give.append(file)
+                    # removing the files
+                    print ("removing : {}".format(file))
+                    os.remove('./Files/'+file)
                     with open('./Files/'+ file ,'r') as f:
                         a = f.read()
                         while a:
