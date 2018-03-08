@@ -67,6 +67,7 @@ class Node:
         self.predecessor = None # lets keep them of type dict
         self.successor = None # todo keep them of type dict()
         # TODO select the type of list for finger table
+        # the dictionary is of a lists for the files
         self.files = defaultdict(list)
         # TODO the finger table will be a dict of lists of id, ip , port
         self.finger_table = dict()
@@ -78,6 +79,17 @@ class Node:
 
 
         #fixme check wether that try expcet for leaving nodes
+
+    def create_file(self):
+        """
+        THis function will be called by the first nodes to preapre the hash for 100 files and stores in self.filse
+        :return:
+        """
+        for file in os.listdir("./Files"):
+            if file.endswith(".txt"):
+                key = Node.get_mbit(file)
+                self.files[key].append(file)
+        print("Files initiated")
     @staticmethod
     def get_mbit(string,m=5):
         """
@@ -459,9 +471,13 @@ if __name__ == '__main__':
         a.start_node()
 
     else:
-        a  = Node()
+        if len(sys.argv) == 2:
+            port = int(sys.argv[1])
+        a  = Node(port = port)
         a.start_server()
         a.join()
+        # initialise the files
+        a.create_file()
         a.start_node()
 
     while True:
