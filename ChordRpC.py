@@ -20,6 +20,11 @@ server.register_function(is_even, "is_even")
 server.serve_forever()
 
 
+Usage
+python Program next_node.id next_node.ipaddress next_node.port <current_node.port>
+python Program <current_node.port>
+
+
 """
 from __future__ import print_function
 import numpy as np
@@ -74,6 +79,7 @@ class Node:
         self.finger_start = dict()
         self.next_node = next_node
         self.second_successor = None
+        self.lock_files = threading.Lock()
         for i in range(self.m):
             self.finger_start[i] = (self.id + (2**i))%(2**self.m)
 
@@ -88,7 +94,9 @@ class Node:
         for file in os.listdir("./Files"):
             if file.endswith(".txt"):
                 key = Node.get_mbit(file)
+                self.lock_files.acquire()
                 self.files[key].append(file)
+                self.lock_files.release()
         print("Files initiated")
     @staticmethod
     def get_mbit(string,m=5):
@@ -130,7 +138,8 @@ class Node:
                                                                                                                               self.predecessor[0], self.predecessor[1], self.predecessor[2]))
         elif choice == 3:
             # print key of file it contains
-            pass
+            for key in self.files:
+                print ("Key: {}, Files : {}".format(key, self.files[key]))
         elif choice == 4:
             # print finger_table
             for i in range(self.m):
@@ -167,6 +176,7 @@ class Node:
         server.register_function(self.set_successor)
         server.register_function(self.notify)
         server.register_function(self.connected)
+        server.register_function(self.give_files)
 
 
         server.serve_forever()
@@ -247,6 +257,28 @@ class Node:
         return [self.id, self.ipaddress, self.port]
 
 
+    def give_files(self,id):
+        """
+        This function will give the files for node with id "id"
+        ie. all files in (predecessor, id]
+        :param id:
+        :return: returns the dictionary of keys and files
+        """
+
+        # dictionary of files
+        files_to_give = list()
+        # iterate over dictionayr keys
+        tempDict = self.files.copy()
+        for key in tempDict:
+            if (Node.inside(key, self.predecessor[0], id, False, True)):
+                for file in tempDict[key]:
+                    files_to_give.append(file)
+                # files_to_give[key] = list(tempDict[key])
+                self.lock_files.acquire()
+                del self.files[key]
+                self.lock_files.release()
+
+        return list(files_to_give)
 
     def join(self,n_dash = None):
         """
@@ -258,7 +290,7 @@ class Node:
         # print("Starting to join...")
         if n_dash is not None:
             # print("Next Node is specified")
-            self.init_finger_table(n_dash)
+            self.init_finger_table(n_dash,True)
             # print("Finge Table Initialized")
             #todo see toif using the update others
             self.update_others()
@@ -283,10 +315,11 @@ class Node:
         """
 
 
-    def init_finger_table(self, n_dash):
+    def init_finger_table(self, n_dash,first = False):
         """
         Initilaise the finger table using n_dash
         :param n_dash:
+        :param first: distinguish between call from join and stablilize
         :return:
         """
         # print("Inside init table")
@@ -295,11 +328,43 @@ class Node:
             self.finger_table[0] = Node.list_to_rpc(n_dash).find_successor(self.finger_start[0])
         except:
             raise ValueError('init_finger_table Node not exists')
-        self.successor = [self.finger_table[0][0], self.finger_table[0][1], self.finger_table[0][2]]
+        self.successor =self.finger_table[0]
         try:
             self.predecessor =  Node.list_to_rpc(self.successor).get_predecessor()
         except:
             raise ValueError('init_finger_table Node not exists')
+        # fixme getting the dictionary of files from successsor
+        # if first:
+        #     try:
+        #         pass
+        #     except:
+        #         raise ValueError("Successor Absent")
+        if first:
+            files = []
+            files = Node.list_to_rpc(self.successor).give_files(self.id)
+            print("Recieved files : {}",files)
+
+            # convert the file array to the dictionary
+        # for file in os.listdir("./Files"):
+        #     if file.endswith(".txt"):
+        #         key = Node.get_mbit(file)
+        #         self.lock_files.acquire()
+        #         self.files[key].append(file)
+        #         self.lock_files.release()
+        # print("Files initiated")
+            for file in files:
+                if file.endswith('.txt'):
+                    key = Node.get_mbit(file)
+                    self.lock_files.acquire()
+                    self.files[key].append(file)
+                    self.lock_files.release()
+
+            print("Files added to the system: ")
+            # TODO createa directory to add the files in the directory
+            # we have the file
+            # self.lock_files.acquire()
+            # self.files = Node.list_to_rpc(self.successor).give_files(self.id)
+            # self.lock_files.release()
         # print("Okay")
         try:
             Node.list_to_rpc(self.successor).set_predecessor([self.id, self.ipaddress, self.port])
@@ -473,7 +538,10 @@ if __name__ == '__main__':
     else:
         if len(sys.argv) == 2:
             port = int(sys.argv[1])
-        a  = Node(port = port)
+            a  = Node(port = port)
+        else:
+            a = Node()
+
         a.start_server()
         a.join()
         # initialise the files

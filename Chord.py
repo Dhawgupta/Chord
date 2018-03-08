@@ -224,7 +224,7 @@ class Peer:
 
     def closest_preceding_finger(self, id):
         """
-        :param id: the parameter id to find the closest preceding node to
+        : param id: the parameter id to find the closest preceding node to
         :return: return Key class type
         """
         for i in range(self.m-1,-1, -1) : #4,3,2,1,0
