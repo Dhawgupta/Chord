@@ -6,3 +6,5 @@ Used XMLRPC calls for procedure execution.
 
 
 This implementation is based on the following paper : `https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=1180543`
+
+The main file to lookout for is `ChordRPC.py` which can be run on indiviudual hosts.
